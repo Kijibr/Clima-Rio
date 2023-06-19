@@ -4,7 +4,7 @@
     "slug": "Clima-Rio",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/sun.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./src/assets/sun.png",
@@ -26,6 +26,14 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Clima-Rio to use your location."
+        }
+      ]
+    ]
   }
 }

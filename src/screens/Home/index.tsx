@@ -7,6 +7,9 @@ import Sun02d from '../../assets/02d.svg'
 import { days, forecast } from '../../api';
 import { GetCurrentTime } from '../../utils/currentForecast';
 
+import * as Location from 'expo-location';
+import { useEffect, useState } from 'react';
+
 export function Home() {
   const thisDate = new Date();
 
@@ -18,22 +21,45 @@ export function Home() {
 
     return currentTemperature
   };
-  
+
   const currentTemperature = GetCurrentForecast();
   const currentTime = GetCurrentTime();
+
+  const [location, setLocation] = useState<Location.LocationObject>();
+  const [errorMsg, setErrorMsg] = useState<string>();
+
+  useEffect(() => {
+    (async () => {
+
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+    })();
+  }, [location]);
+  
+  let text = 'Waiting..';
+  if (errorMsg) {
+    text = errorMsg;
+  } else if (location) {
+    text = JSON.stringify(location);
+  }
   
   return (
     <LinearGradient colors={currentTime.gradientColor} style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <MapPin color="#fff" size={24} />
+            <MapPin  color="#fff" size={24} />
             <Text style={styles.headerLeftText}>Rio de Janeiro</Text>
             <CaretDown color="#fff" size={24} />
           </View>
           <BellRinging color="#fff" size={24} />
         </View>
-
         <View style={styles.weatherInfo}>
           <Text style={styles.weatherInfoTitle}>{`${currentTime.message}, Maria Rita`}</Text>
           {currentTime.icon}
