@@ -1,5 +1,21 @@
-export const api = () => {
+import axios from "axios";
+import { WeatherData } from "./screens/Home";
 
+export const api = axios.create({
+  baseURL: "api.openweathermap.org/data/2.5"
+})
+
+export const teste = async(lat: number, lon: number) => {
+  try {
+    const lati = lat.toString()
+    const long = lon.toString()
+
+    const vai = await api.get<WeatherData>(`https://api.openweathermap.org/data/2.5/forecast?lat=${lati}&lon=${long}&appid=fad6817924cb65152944de5bcd315f4b`);
+    // if (vai.status == 200)
+      return vai.data
+  } catch (error) {
+    console.error("deu pau", error)
+  }
 }
 
 export const days = [
@@ -47,7 +63,7 @@ export const cities = [
   'Jacarépaguá'
 ]
 
-export const forecast = [
+export const forecastTest = [
   {
     index: 0,
     temp: '22°C'

@@ -4,90 +4,177 @@ import { MapPin, CaretDown, BellRinging } from 'phosphor-react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Sun02d from '../../assets/02d.svg'
-import { days, forecast } from '../../api';
-import { GetCurrentTime } from '../../utils/currentForecast';
+import { days, forecastTest, teste } from '../../api';
+import { GetCurrentTime, currentForecast } from '../../utils/currentForecast';
 
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { Key, useEffect, useState } from 'react';
+import { ForecastType } from '../../@types/ForecastType';
+import { Float } from 'react-native/Libraries/Types/CodegenTypes';
+export interface WeatherData {
+  list: {
+    dt_txt: string;
+    main: {
+      temp: number;
+      temp_max: number;
+      temp_min: number;
+    };
+    weather: {
+      main: string;
+    }[];
+  }[];
+}
 
 export function Home() {
-  const thisDate = new Date();
+  
+  function formatarHora(data: Date) {
+    const horas = data.getHours().toString().padStart(2, '0');
+    const minutos = data.getMinutes().toString().padStart(2, '0');
+    return `${horas}:${minutos}`;
+  } const thisDate = new Date();
 
-  function GetCurrentForecast() {
-    const currentDay = thisDate.toLocaleString('pt-br', { weekday: 'short' }).split(',')[0];
+
+  function GetCurrentForecast(date: Date) {
+    const currentDay = date.toLocaleString("Pt-Br", { weekday: "short" }).split(',')[0];
     const currentDayFormatted = currentDay[0].toUpperCase() + currentDay.substring(1);
-    const currentTemperatureIndex = days.filter(day => day.day == currentDayFormatted)[0].index
-    const currentTemperature = forecast.filter(forecast => forecast.index == currentTemperatureIndex)[0].temp
-
-    return currentTemperature
+    // const currentTemperatureIndex = days.filter(day => day.day == currentDayFormatted)[0]
+    // const currentTemperature = forecast.filter(forecast => forecast?.index == currentTemperatureIndex?.index)[0]
+    return currentDayFormatted
   };
 
-  const currentTemperature = GetCurrentForecast();
   const currentTime = GetCurrentTime();
 
-  const [location, setLocation] = useState<Location.LocationObject>();
+  const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState<any>();
+
+  const [forecastState, setForecast] = useState<WeatherData | undefined>(undefined);
+
   const [errorMsg, setErrorMsg] = useState<string>();
 
+
   useEffect(() => {
-    (async () => {
+    // (async () => {
 
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
+    const fetchWeatherData = async () => {
+      try {
+
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
+          return;
+        }
+
+        const location = await Location.getCurrentPositionAsync({});
+        const weatherForecast = await teste(location.coords.latitude, location.coords.longitude);
+
+        setForecast(weatherForecast);
+        setLocation(location);
+        setLoading(false);
+      } catch (error) {
+        console.log("Erro to find data", error)
       }
+    }
 
-      const location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
-    })();
-  }, [location]);
-  
+    if (!forecastState && loading) {
+      fetchWeatherData();
+    }
+    // })();
+
+  }, [forecastState, loading]);
+
+  const splitArray = (arr: any, parts: number) => {
+    const result = [];
+    const len = Math.ceil(arr?.length / parts);
+
+    for (let i = 0; i < arr?.length; i += len) {
+      result.push(arr.slice(i, i + len));
+    }
+
+    return result;
+  };
+
+  const splitData = splitArray(forecastState?.list, 7);
+
+
+  const ConverterToCelsius = (temp: any) => {
+    const tempToCelsius = (temp - 273.15)
+    return tempToCelsius.toFixed(1);
+  }
+
+
   let text = 'Waiting..';
   if (errorMsg) {
     text = errorMsg;
   } else if (location) {
     text = JSON.stringify(location);
   }
-  
+
   return (
     <LinearGradient colors={currentTime.gradientColor} style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <MapPin  color="#fff" size={24} />
-            <Text style={styles.headerLeftText}>Rio de Janeiro</Text>
-            <CaretDown color="#fff" size={24} />
-          </View>
-          <BellRinging color="#fff" size={24} />
-        </View>
-        <View style={styles.weatherInfo}>
-          <Text style={styles.weatherInfoTitle}>{`${currentTime.message}, Maria Rita`}</Text>
-          {currentTime.icon}
-          <Text style={styles.weatherTemperature}>{currentTemperature}</Text>
-          <Text style={styles.weatherTemperatureVariation}>Max.: 34° - Min.: 23°</Text>
-        </View>
+        {!loading && forecastState?.list.length && forecastState.list.length > 1 &&
+          <>
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <MapPin color="#fff" size={24} />
+                <Text style={styles.headerLeftText}>Rio de Janeiro</Text>
+                <CaretDown color="#fff" size={24} />
+              </View>
+              <BellRinging color="#fff" size={24} />
+            </View>
+            {/* {console.log("dias", forecastState.list)} */}
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherInfoTitle}>{`${currentTime.message}, Maria Rita`}</Text>
+              {currentTime.icon}
+              <Text style={styles.weatherTemperature}>{
+                ConverterToCelsius(
+                  forecastState.list.filter(obj => {
+                    const olha = new Date(obj.dt_txt).getHours();
+                    return currentTime.moment?.includes(olha.toString());
+                  })[0]?.main?.temp)
+              }
+              </Text>
+              <Text style={styles.weatherTemperatureVariation}>Max.: {
+                ConverterToCelsius(
+                  forecastState.list.filter(obj => {
+                    const olha = new Date(obj.dt_txt).getHours();
+                    return currentTime.moment?.includes(olha.toString());
+                  })[0]?.main?.temp_max)
+              } - Min.: {
+                  ConverterToCelsius(
+                    forecastState.list.filter(obj => {
+                      const olha = new Date(obj.dt_txt).getHours();
+                      return currentTime.moment?.includes(olha.toString());
+                    })[0]?.main?.temp_min)
+                }</Text>
+            </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Previsão para esta semana</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <>
-              {forecast.map((item: any, index) => {
-                const dayOfWeek = days.filter((day) => day.index == item.index)[0];
-                return (
-                  <>
-                    <View key={index} style={styles.footerCard}>
-                      <Text style={styles.footerCardDay}>{dayOfWeek.day}</Text>
-                      <Sun02d width={40} height={40} />
-                      <Text style={styles.footerCardTemperature}>{item.temp}</Text>
-                    </View>
-                  </>
-                )
-              })}
-            </>
-          </ScrollView>
-        </View>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Previsão completa de hoje</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <>
+                  {forecastState.list.length && splitData[0]?.map((item: { dt_txt: string | number | Date; main: { temp: any; }; weather: [{}] }, index: Key | null | undefined) => {
+                    const dayByForecast = new Date(item.dt_txt);
+                    const dayOfWeek = days.filter((day) => day?.day == GetCurrentForecast(dayByForecast))[0];
+                    console.log("UE", item.weather[0]?.icon)
+
+                    return (
+                      <>
+                        <View key={index} style={styles.footerCard}>
+                          <Text style={styles.footerCardDay}>{formatarHora(dayByForecast)}</Text>
+                          <Sun02d width={40} height={40} />
+                          <Text style={styles.footerCardTemperature}>{ConverterToCelsius(item?.main?.temp)}</Text>
+                        </View>
+                      </>
+                    );
+                  })}
+                </>
+              </ScrollView>
+            </View>
+          </>
+        }
       </View>
-    </LinearGradient>
+    </LinearGradient >
   );
 }
 
@@ -137,13 +224,14 @@ const styles = StyleSheet.create({
   },
   footer: {
     width: '100%',
-    paddingLeft: 24,
+    paddingLeft: 20,
   },
   footerText: {
     color: "#fff",
     fontSize: 20,
     fontWeight: "300",
     alignSelf: 'center',
+    paddingBottom: 16
   },
   footerCard: {
     width: 100,
